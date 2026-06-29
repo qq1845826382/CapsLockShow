@@ -15,31 +15,35 @@ from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, QTim
 from PySide6.QtGui import QAction, QColor, QCursor, QFont, QIcon, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
-    QComboBox,
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
     QLabel,
-    QMainWindow,
     QMenu,
     QMessageBox,
-    QPushButton,
-    QSlider,
-    QStackedWidget,
     QSystemTrayIcon,
-    QVBoxLayout,
     QWidget,
 )
 
-try:
-    from qfluentwidgets import FluentIcon as FIF
-    from qfluentwidgets import setTheme, setThemeColor, Theme
-except Exception:
-    FIF = None
-    Theme = None
-    setTheme = None
-    setThemeColor = None
+from qfluentwidgets import (
+    ConfigItem,
+    ExpandLayout,
+    FluentIcon as FIF,
+    MSFluentWindow,
+    NavigationItemPosition,
+    OptionsConfigItem,
+    OptionsSettingCard,
+    OptionsValidator,
+    PrimaryPushSettingCard,
+    PushSettingCard,
+    RangeConfigItem,
+    RangeSettingCard,
+    RangeValidator,
+    ScrollArea,
+    SettingCardGroup,
+    SwitchSettingCard,
+    Theme,
+    TitleLabel,
+    setTheme,
+    setThemeColor,
+)
 
 
 APP_NAME = "CapsLockShow"
@@ -245,80 +249,13 @@ def effective_theme(settings: AppSettings) -> str:
 
 
 def apply_app_theme(settings: AppSettings) -> None:
-    if setTheme and Theme:
-        if settings.theme == "dark":
-            setTheme(Theme.DARK)
-        elif settings.theme == "light":
-            setTheme(Theme.LIGHT)
-        else:
-            setTheme(Theme.AUTO)
-        if setThemeColor:
-            setThemeColor(accent_color())
-
-    app = QApplication.instance()
-    if not app:
-        return
-    dark = effective_theme(settings) == "dark"
-    bg = "#202020" if dark else "#F7F7F7"
-    panel = "#2B2B2B" if dark else "#FFFFFF"
-    text = "#F3F3F3" if dark else "#1F1F1F"
-    sub = "#C8C8C8" if dark else "#5F5F5F"
-    border = "#3A3A3A" if dark else "#E6E6E6"
-    app.setStyleSheet(
-        f"""
-        QWidget {{
-            font-family: "Segoe UI Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif;
-            color: {text};
-            background: {bg};
-            font-size: 13px;
-        }}
-        QFrame#Card {{
-            background: {panel};
-            border: 1px solid {border};
-            border-radius: 8px;
-        }}
-        QPushButton {{
-            background: {panel};
-            border: 1px solid {border};
-            border-radius: 6px;
-            padding: 7px 12px;
-        }}
-        QPushButton:hover {{
-            background: {"#343434" if dark else "#F2F2F2"};
-        }}
-        QPushButton#PrimaryButton {{
-            background: {accent_color().name()};
-            color: white;
-            border: 1px solid {accent_color().name()};
-        }}
-        QLabel#Title {{
-            font-size: 22px;
-            font-weight: 600;
-        }}
-        QLabel#Subtitle {{
-            color: {sub};
-        }}
-        QListWidget, QComboBox, QMenu {{
-            background: {panel};
-            border: 1px solid {border};
-        }}
-        QCheckBox::indicator {{
-            width: 34px;
-            height: 18px;
-        }}
-        QSlider::groove:horizontal {{
-            height: 4px;
-            border-radius: 2px;
-            background: {"#4A4A4A" if dark else "#D8D8D8"};
-        }}
-        QSlider::handle:horizontal {{
-            background: {accent_color().name()};
-            width: 16px;
-            margin: -6px 0;
-            border-radius: 8px;
-        }}
-        """
-    )
+    if settings.theme == "dark":
+        setTheme(Theme.DARK)
+    elif settings.theme == "light":
+        setTheme(Theme.LIGHT)
+    else:
+        setTheme(Theme.AUTO)
+    setThemeColor(accent_color())
 
 
 class KeyboardBridge(QObject):
@@ -518,197 +455,281 @@ class LockFlyout(QWidget):
         painter.restore()
 
 
-class SettingRow(QFrame):
-    def __init__(self, title: str, description: str, control: QWidget):
-        super().__init__()
-        self.setObjectName("Card")
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(16)
+class SettingsConfigItems:
+    def __init__(self, settings: AppSettings):
+        self.caps_enabled = ConfigItem("LockKeys", "CapsEnabled", settings.caps_enabled)
+        self.num_enabled = ConfigItem("LockKeys", "NumEnabled", settings.num_enabled)
+        self.scroll_enabled = ConfigItem("LockKeys", "ScrollEnabled", settings.scroll_enabled)
+        self.startup = ConfigItem("System", "Startup", settings.startup)
+        self.hide_directx_fullscreen = ConfigItem(
+            "System",
+            "HideDirectXFullscreen",
+            settings.hide_directx_fullscreen,
+        )
+        self.duration = RangeConfigItem(
+            "Flyout",
+            "DurationTenths",
+            max(5, min(50, settings.duration_ms // 100)),
+            RangeValidator(5, 50),
+        )
+        self.theme = OptionsConfigItem(
+            "Appearance",
+            "Theme",
+            settings.theme,
+            OptionsValidator(["system", "light", "dark"]),
+        )
+        self.position = OptionsConfigItem(
+            "Appearance",
+            "Position",
+            settings.position,
+            OptionsValidator(["bottom_center", "bottom_left", "bottom_right", "top_center"]),
+        )
 
-        texts = QVBoxLayout()
-        title_label = QLabel(title)
-        title_label.setFont(QFont("Microsoft YaHei UI", 10, QFont.Weight.DemiBold))
-        desc_label = QLabel(description)
-        desc_label.setObjectName("Subtitle")
-        desc_label.setWordWrap(True)
-        texts.addWidget(title_label)
-        texts.addWidget(desc_label)
-        layout.addLayout(texts, 1)
-        layout.addWidget(control, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+class SettingsPage(ScrollArea):
+    def __init__(self, title: str, route_key: str, parent=None):
+        super().__init__(parent=parent)
+        self.setObjectName(route_key)
+        self.scroll_widget = QWidget()
+        self.expand_layout = ExpandLayout(self.scroll_widget)
+        self.title_label = TitleLabel(title, self)
+
+        self.setWidget(self.scroll_widget)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setViewportMargins(0, 86, 0, 18)
+        self.expand_layout.setSpacing(28)
+        self.expand_layout.setContentsMargins(48, 0, 48, 0)
+        self.scroll_widget.setObjectName("scrollWidget")
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.title_label.move(48, 38)
+
+    def add_group(self, group: SettingCardGroup, *cards: QWidget) -> None:
+        for card in cards:
+            group.addSettingCard(card)
+        self.expand_layout.addWidget(group)
 
 
-class SettingsWindow(QMainWindow):
+class GeneralSettingsPage(SettingsPage):
     changed = Signal()
     test_requested = Signal(str)
 
-    def __init__(self, settings: AppSettings):
-        super().__init__()
+    def __init__(self, settings: AppSettings, items: SettingsConfigItems, parent=None):
+        super().__init__("常规", "generalInterface", parent)
         self.settings = settings
-        self.setWindowTitle(f"{APP_NAME} 设置")
-        self.resize(760, 520)
-        self.setMinimumSize(680, 460)
+        self.items = items
 
-        root = QWidget()
-        root_layout = QHBoxLayout(root)
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
-        self.setCentralWidget(root)
-
-        sidebar = QFrame()
-        sidebar.setFixedWidth(190)
-        sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(16, 18, 12, 18)
-        sidebar_layout.setSpacing(8)
-        app_title = QLabel(APP_NAME)
-        app_title.setObjectName("Title")
-        sidebar_layout.addWidget(app_title)
-        sidebar_layout.addSpacing(8)
-
-        self.general_button = self._nav_button("常规")
-        self.appearance_button = self._nav_button("外观")
-        self.about_button = self._nav_button("关于")
-        sidebar_layout.addWidget(self.general_button)
-        sidebar_layout.addWidget(self.appearance_button)
-        sidebar_layout.addWidget(self.about_button)
-        sidebar_layout.addStretch(1)
-        root_layout.addWidget(sidebar)
-
-        self.stack = QStackedWidget()
-        root_layout.addWidget(self.stack, 1)
-        self.stack.addWidget(self._general_page())
-        self.stack.addWidget(self._appearance_page())
-        self.stack.addWidget(self._about_page())
-        self.general_button.clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        self.appearance_button.clicked.connect(lambda: self.stack.setCurrentIndex(1))
-        self.about_button.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-
-    def _nav_button(self, text: str) -> QPushButton:
-        button = QPushButton(text)
-        button.setFixedHeight(38)
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        return button
-
-    def _page(self, title: str, subtitle: str) -> tuple[QWidget, QVBoxLayout]:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(26, 24, 26, 24)
-        layout.setSpacing(12)
-        title_label = QLabel(title)
-        title_label.setObjectName("Title")
-        subtitle_label = QLabel(subtitle)
-        subtitle_label.setObjectName("Subtitle")
-        layout.addWidget(title_label)
-        layout.addWidget(subtitle_label)
-        layout.addSpacing(8)
-        return page, layout
-
-    def _general_page(self) -> QWidget:
-        page, layout = self._page("常规", "控制锁定键监听、显示时长、开机启动和测试浮窗。")
-
-        self.caps_check = self._check(self.settings.caps_enabled, lambda v: self._set("caps_enabled", v))
-        self.num_check = self._check(self.settings.num_enabled, lambda v: self._set("num_enabled", v))
-        self.scroll_check = self._check(self.settings.scroll_enabled, lambda v: self._set("scroll_enabled", v))
-        self.startup_check = self._check(self.settings.startup, self._set_startup)
-        self.fullscreen_check = self._check(
-            self.settings.hide_directx_fullscreen,
-            lambda v: self._set("hide_directx_fullscreen", v),
+        lock_group = SettingCardGroup("锁定键", self.scroll_widget)
+        self.caps_card = SwitchSettingCard(
+            FIF.FONT,
+            "Caps Lock",
+            "按下大小写锁定键后显示状态浮窗",
+            configItem=items.caps_enabled,
+            parent=lock_group,
         )
-
-        layout.addWidget(SettingRow("Caps Lock", "按下大小写锁定键后显示状态浮窗。", self.caps_check))
-        layout.addWidget(SettingRow("Num Lock", "按下数字锁定键后显示状态浮窗。", self.num_check))
-        layout.addWidget(SettingRow("Scroll Lock", "按下滚动锁定键后显示状态浮窗。", self.scroll_check))
-        layout.addWidget(SettingRow("开机自启动", "登录 Windows 后自动启动 CapsLockShow。", self.startup_check))
-        layout.addWidget(SettingRow("DirectX 全屏时隐藏", "与 FluentFlyout 一致，仅 DirectX 独占全屏时不显示浮窗。", self.fullscreen_check))
-
-        duration_box = QWidget()
-        duration_layout = QHBoxLayout(duration_box)
-        duration_layout.setContentsMargins(0, 0, 0, 0)
-        self.duration_label = QLabel(f"{self.settings.duration_ms / 1000:.1f} 秒")
-        duration_slider = QSlider(Qt.Orientation.Horizontal)
-        duration_slider.setRange(500, 5000)
-        duration_slider.setSingleStep(100)
-        duration_slider.setPageStep(500)
-        duration_slider.setValue(self.settings.duration_ms)
-        duration_slider.valueChanged.connect(self._set_duration)
-        duration_layout.addWidget(duration_slider)
-        duration_layout.addWidget(self.duration_label)
-        layout.addWidget(SettingRow("显示时长", "浮窗自动消失前停留的时间。", duration_box))
-
-        tests = QWidget()
-        test_layout = QHBoxLayout(tests)
-        test_layout.setContentsMargins(0, 0, 0, 0)
-        for key in ("Caps Lock", "Num Lock", "Scroll Lock"):
-            button = QPushButton(key)
-            button.clicked.connect(lambda checked=False, k=key: self.test_requested.emit(k))
-            test_layout.addWidget(button)
-        layout.addWidget(SettingRow("测试浮窗", "无需按键即可预览三种状态提示。", tests))
-        layout.addStretch(1)
-        return page
-
-    def _appearance_page(self) -> QWidget:
-        page, layout = self._page("外观", "调整浮窗位置和主题。")
-
-        theme_combo = QComboBox()
-        theme_combo.addItem("跟随系统", "system")
-        theme_combo.addItem("浅色", "light")
-        theme_combo.addItem("深色", "dark")
-        theme_combo.setCurrentIndex(max(0, theme_combo.findData(self.settings.theme)))
-        theme_combo.currentIndexChanged.connect(lambda: self._set("theme", theme_combo.currentData()))
-
-        position_combo = QComboBox()
-        position_combo.addItem("底部居中", "bottom_center")
-        position_combo.addItem("左下角", "bottom_left")
-        position_combo.addItem("右下角", "bottom_right")
-        position_combo.addItem("顶部居中", "top_center")
-        position_combo.setCurrentIndex(max(0, position_combo.findData(self.settings.position)))
-        position_combo.currentIndexChanged.connect(lambda: self._set("position", position_combo.currentData()))
-
-        layout.addWidget(SettingRow("主题", "默认跟随 Windows 深浅色设置。", theme_combo))
-        layout.addWidget(SettingRow("浮窗位置", "默认在鼠标所在屏幕的底部居中显示。", position_combo))
-        layout.addStretch(1)
-        return page
-
-    def _about_page(self) -> QWidget:
-        page, layout = self._page("关于", "只保留键盘锁定键浮窗功能。")
-        text = QLabel(
-            "CapsLockShow 是一个面向 Windows 11 的锁定键浮窗工具。\n"
-            "项目按 GPLv3 开源，UI 使用 PySide6-Fluent-Widgets，交互参考 FluentFlyout。"
+        self.num_card = SwitchSettingCard(
+            FIF.CHECKBOX,
+            "Num Lock",
+            "按下数字锁定键后显示状态浮窗",
+            configItem=items.num_enabled,
+            parent=lock_group,
         )
-        text.setWordWrap(True)
-        text.setObjectName("Subtitle")
-        layout.addWidget(text)
-        layout.addStretch(1)
-        return page
+        self.scroll_card = SwitchSettingCard(
+            FIF.SCROLL,
+            "Scroll Lock",
+            "按下滚动锁定键后显示状态浮窗",
+            configItem=items.scroll_enabled,
+            parent=lock_group,
+        )
+        self.add_group(lock_group, self.caps_card, self.num_card, self.scroll_card)
 
-    def _check(self, checked: bool, callback: Callable[[bool], None]) -> QCheckBox:
-        check = QCheckBox()
-        check.setChecked(checked)
-        check.toggled.connect(callback)
-        return check
+        behavior_group = SettingCardGroup("行为", self.scroll_widget)
+        self.duration_card = RangeSettingCard(
+            items.duration,
+            FIF.STOP_WATCH,
+            "显示时长",
+            "浮窗自动消失前停留的时间",
+            parent=behavior_group,
+        )
+        self.duration_card.slider.setSingleStep(1)
+        self.duration_card.slider.setPageStep(5)
+        self._format_duration_label(items.duration.value)
+
+        self.fullscreen_card = SwitchSettingCard(
+            FIF.GAME,
+            "DirectX 全屏时隐藏",
+            "与 FluentFlyout 一致，仅 DirectX 独占全屏时不显示浮窗",
+            configItem=items.hide_directx_fullscreen,
+            parent=behavior_group,
+        )
+        self.startup_card = SwitchSettingCard(
+            FIF.POWER_BUTTON,
+            "开机自启动",
+            "登录 Windows 后自动启动 CapsLockShow",
+            configItem=items.startup,
+            parent=behavior_group,
+        )
+        self.add_group(behavior_group, self.duration_card, self.fullscreen_card, self.startup_card)
+
+        test_group = SettingCardGroup("预览", self.scroll_widget)
+        self.test_caps_card = PushSettingCard(
+            "预览",
+            FIF.VIEW,
+            "Caps Lock 浮窗",
+            "使用当前 Caps Lock 状态显示一次浮窗",
+            parent=test_group,
+        )
+        self.test_num_card = PushSettingCard(
+            "预览",
+            FIF.VIEW,
+            "Num Lock 浮窗",
+            "使用当前 Num Lock 状态显示一次浮窗",
+            parent=test_group,
+        )
+        self.test_scroll_card = PushSettingCard(
+            "预览",
+            FIF.VIEW,
+            "Scroll Lock 浮窗",
+            "使用当前 Scroll Lock 状态显示一次浮窗",
+            parent=test_group,
+        )
+        self.add_group(test_group, self.test_caps_card, self.test_num_card, self.test_scroll_card)
+
+        self.caps_card.checkedChanged.connect(lambda v: self._set("caps_enabled", v))
+        self.num_card.checkedChanged.connect(lambda v: self._set("num_enabled", v))
+        self.scroll_card.checkedChanged.connect(lambda v: self._set("scroll_enabled", v))
+        self.fullscreen_card.checkedChanged.connect(lambda v: self._set("hide_directx_fullscreen", v))
+        self.startup_card.checkedChanged.connect(self._set_startup)
+        self.duration_card.valueChanged.connect(self._set_duration)
+        self.test_caps_card.clicked.connect(lambda: self.test_requested.emit("Caps Lock"))
+        self.test_num_card.clicked.connect(lambda: self.test_requested.emit("Num Lock"))
+        self.test_scroll_card.clicked.connect(lambda: self.test_requested.emit("Scroll Lock"))
 
     def _set(self, name: str, value) -> None:
         setattr(self.settings, name, value)
         save_settings(self.settings)
-        if name == "theme":
-            apply_app_theme(self.settings)
         self.changed.emit()
 
     def _set_startup(self, enabled: bool) -> None:
         try:
             set_startup_enabled(enabled)
         except OSError as exc:
-            QMessageBox.warning(self, APP_NAME, f"无法更新开机启动设置：{exc}")
-            self.startup_check.blockSignals(True)
-            self.startup_check.setChecked(self.settings.startup)
-            self.startup_check.blockSignals(False)
+            QMessageBox.warning(self.window(), APP_NAME, f"无法更新开机启动设置：{exc}")
+            self.sync_startup(self.settings.startup)
             return
         self._set("startup", enabled)
 
     def _set_duration(self, value: int) -> None:
-        value = int(round(value / 100) * 100)
-        self.duration_label.setText(f"{value / 1000:.1f} 秒")
-        self._set("duration_ms", value)
+        self._format_duration_label(value)
+        self._set("duration_ms", value * 100)
+
+    def _format_duration_label(self, value: int) -> None:
+        self.duration_card.valueLabel.setText(f"{value / 10:.1f} 秒")
+        self.duration_card.valueLabel.adjustSize()
+
+    def sync_startup(self, enabled: bool) -> None:
+        self.startup_card.switchButton.blockSignals(True)
+        self.startup_card.setChecked(enabled)
+        self.startup_card.switchButton.blockSignals(False)
+
+
+class AppearanceSettingsPage(SettingsPage):
+    changed = Signal()
+
+    def __init__(self, settings: AppSettings, items: SettingsConfigItems, parent=None):
+        super().__init__("外观", "appearanceInterface", parent)
+        self.settings = settings
+
+        appearance_group = SettingCardGroup("个性化", self.scroll_widget)
+        self.theme_card = OptionsSettingCard(
+            items.theme,
+            FIF.BRUSH,
+            "应用主题",
+            "更改设置窗口和浮窗的深浅色策略",
+            texts=["跟随系统", "浅色", "深色"],
+            parent=appearance_group,
+        )
+        self.position_card = OptionsSettingCard(
+            items.position,
+            FIF.LAYOUT,
+            "浮窗位置",
+            "默认显示在鼠标所在屏幕的底部居中",
+            texts=["底部居中", "左下角", "右下角", "顶部居中"],
+            parent=appearance_group,
+        )
+        self.add_group(appearance_group, self.theme_card, self.position_card)
+
+        self.theme_card.optionChanged.connect(lambda item: self._set_theme(item.value))
+        self.position_card.optionChanged.connect(lambda item: self._set("position", item.value))
+
+    def _set(self, name: str, value) -> None:
+        setattr(self.settings, name, value)
+        save_settings(self.settings)
+        self.changed.emit()
+
+    def _set_theme(self, value: str) -> None:
+        self._set("theme", value)
+        apply_app_theme(self.settings)
+
+
+class AboutSettingsPage(SettingsPage):
+    def __init__(self, parent=None):
+        super().__init__("关于", "aboutInterface", parent)
+        about_group = SettingCardGroup("CapsLockShow", self.scroll_widget)
+        description = QLabel(
+            "CapsLockShow 是一个面向 Windows 11 的锁定键浮窗工具。\n"
+            "项目按 GPLv3 开源，UI 使用 PySide6-Fluent-Widgets，交互参考 FluentFlyout。"
+        )
+        description.setWordWrap(True)
+        description.setContentsMargins(20, 12, 20, 12)
+
+        license_card = PrimaryPushSettingCard(
+            "GPLv3",
+            FIF.INFO,
+            "开源许可",
+            "公开分发时请保留源码、许可证和第三方依赖说明",
+            parent=about_group,
+        )
+        about_group.addSettingCard(description)
+        about_group.addSettingCard(license_card)
+        self.expand_layout.addWidget(about_group)
+
+
+class SettingsWindow(MSFluentWindow):
+    changed = Signal()
+    test_requested = Signal(str)
+
+    def __init__(self, settings: AppSettings, icon: QIcon):
+        super().__init__()
+        self.settings = settings
+        self.items = SettingsConfigItems(settings)
+        self.setWindowTitle(f"{APP_NAME} 设置")
+        self.setWindowIcon(icon)
+        self.resize(860, 640)
+        self.setMinimumSize(760, 560)
+        self.setMicaEffectEnabled(True)
+
+        self.general_page = GeneralSettingsPage(settings, self.items, self)
+        self.appearance_page = AppearanceSettingsPage(settings, self.items, self)
+        self.about_page = AboutSettingsPage(self)
+
+        self.addSubInterface(self.general_page, FIF.SETTING, "常规")
+        self.addSubInterface(self.appearance_page, FIF.PALETTE, "外观")
+        self.addSubInterface(
+            self.about_page,
+            FIF.INFO,
+            "关于",
+            position=NavigationItemPosition.BOTTOM,
+        )
+
+        self.general_page.changed.connect(self.changed)
+        self.general_page.test_requested.connect(self.test_requested)
+        self.appearance_page.changed.connect(self.changed)
+
+    def sync_startup(self, enabled: bool) -> None:
+        self.general_page.sync_startup(enabled)
 
 
 class CapsLockShowApp(QObject):
@@ -719,7 +740,8 @@ class CapsLockShowApp(QObject):
         self.bridge = KeyboardBridge()
         self.bridge.key_released.connect(self.on_key_released)
         self.flyout = LockFlyout(self.settings)
-        self.settings_window = SettingsWindow(self.settings)
+        self.icon = self._app_icon()
+        self.settings_window = SettingsWindow(self.settings, self.icon)
         self.settings_window.changed.connect(self.refresh_tray_state)
         self.settings_window.test_requested.connect(self.test_flyout)
         self.tray = self._create_tray()
@@ -728,7 +750,7 @@ class CapsLockShowApp(QObject):
         QApplication.instance().aboutToQuit.connect(self.shutdown)
 
     def _create_tray(self) -> QSystemTrayIcon:
-        tray = QSystemTrayIcon(self._app_icon(), self)
+        tray = QSystemTrayIcon(self.icon, self)
         tray.setToolTip(APP_NAME)
         menu = QMenu()
         open_action = QAction("打开设置", menu)
@@ -787,9 +809,7 @@ class CapsLockShowApp(QObject):
 
     def refresh_tray_state(self) -> None:
         self.startup_action.setChecked(self.settings.startup)
-        self.settings_window.startup_check.blockSignals(True)
-        self.settings_window.startup_check.setChecked(self.settings.startup)
-        self.settings_window.startup_check.blockSignals(False)
+        self.settings_window.sync_startup(self.settings.startup)
 
     def test_flyout(self, key_name: str) -> None:
         vk_code = next((code for code, (_, name) in KEYS.items() if name == key_name), None)
