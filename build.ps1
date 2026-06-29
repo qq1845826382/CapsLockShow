@@ -32,7 +32,9 @@ Invoke-Step { & $VenvPython -m PyInstaller `
     --onefile `
     --windowed `
     --collect-all qfluentwidgets `
+    --add-data "Icon.png:." `
+    --icon "Icon.png" `
     --name CapsLockShow `
-    main.py }
+    app.py }
 
 Write-Host "Built: $Root\dist\CapsLockShow.exe"
