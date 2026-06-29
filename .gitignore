@@ -1,6 +1,12 @@
+.vs/
+.idea/
 .venv/
-build/
 __pycache__/
 *.py[cod]
-*.spec
-.idea/
+
+bin/
+obj/
+dist/
+build/
+*.zip
+*.nupkg

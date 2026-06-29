@@ -1,0 +1,315 @@
+<ui:FluentWindow x:Class="CapsLockShow.Views.SettingsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="CapsLockShow 设置"
+                 Width="900"
+                 Height="700"
+                 MinWidth="750"
+                 MinHeight="500"
+                 d:DesignHeight="700"
+                 d:DesignWidth="900"
+                 ui:Design.Background="{DynamicResource ApplicationBackgroundBrush}"
+                 ui:Design.Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                 ExtendsContentIntoTitleBar="True"
+                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round"
+                 WindowStartupLocation="CenterScreen"
+                 TextOptions.TextFormattingMode="Ideal"
+                 TextOptions.TextRenderingMode="ClearType"
+                 mc:Ignorable="d">
+    <Grid>
+        <ui:NavigationView x:Name="RootNavigation"
+                           PaneDisplayMode="Left"
+                           TransitionDuration="300"
+                           IsBackButtonVisible="Collapsed"
+                           IsPaneToggleVisible="False"
+                           Margin="0,40,0,0"
+                           FrameMargin="0"
+                           OpenPaneLength="250"
+                           IsPaneOpen="True"
+                           IsTopSeparatorVisible="False"
+                           IsFooterSeparatorVisible="False">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem x:Name="GeneralItem"
+                                       Content="常规"
+                                       Icon="{ui:SymbolIcon LockMultiple24}"
+                                       PreviewMouseLeftButtonUp="OnGeneralClicked" />
+                <ui:NavigationViewItem x:Name="AppearanceItem"
+                                       Content="外观"
+                                       Icon="{ui:SymbolIcon PaintBrush24}"
+                                       PreviewMouseLeftButtonUp="OnAppearanceClicked" />
+            </ui:NavigationView.MenuItems>
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem x:Name="AboutItem"
+                                       Content="关于"
+                                       Icon="{ui:SymbolIcon Info24}"
+                                       PreviewMouseLeftButtonUp="OnAboutClicked" />
+            </ui:NavigationView.FooterMenuItems>
+            <ui:NavigationView.ContentOverlay>
+                <Grid Margin="16,16,28,16">
+                    <ScrollViewer x:Name="GeneralPage"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel MaxWidth="1000"
+                                    Margin="0,0,20,0">
+                            <TextBlock Text="常规"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,20" />
+
+                            <TextBlock Text="锁定键"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,6" />
+                            <ui:CardControl Icon="{ui:SymbolIcon TextCaseTitle24}"
+                                            Margin="0,0,0,3">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Caps Lock"
+                                                   FontSize="14" />
+                                        <TextBlock Text="按下大小写锁定键后显示状态浮窗"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="CapsEnabledBox"
+                                                 Checked="OnSettingChanged"
+                                                 Unchecked="OnSettingChanged" />
+                            </ui:CardControl>
+                            <ui:CardControl Icon="{ui:SymbolIcon NumberSymbol24}"
+                                            Margin="0,0,0,3">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Num Lock"
+                                                   FontSize="14" />
+                                        <TextBlock Text="按下数字锁定键后显示状态浮窗"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="NumEnabledBox"
+                                                 Checked="OnSettingChanged"
+                                                 Unchecked="OnSettingChanged" />
+                            </ui:CardControl>
+                            <ui:CardControl Icon="{ui:SymbolIcon ArrowBetweenDown24}"
+                                            Margin="0,0,0,24">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="Scroll Lock"
+                                                   FontSize="14" />
+                                        <TextBlock Text="按下滚动锁定键后显示状态浮窗"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="ScrollEnabledBox"
+                                                 Checked="OnSettingChanged"
+                                                 Unchecked="OnSettingChanged" />
+                            </ui:CardControl>
+
+                            <TextBlock Text="行为"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,6" />
+                            <ui:CardControl Icon="{ui:SymbolIcon Timer24}"
+                                            Margin="0,0,0,3">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="显示时长"
+                                                   FontSize="14" />
+                                        <TextBlock Text="浮窗自动消失前停留的时间"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Slider x:Name="DurationSlider"
+                                            Width="150"
+                                            Minimum="5"
+                                            Maximum="50"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            ValueChanged="OnDurationChanged" />
+                                    <TextBlock x:Name="DurationText"
+                                               Width="62"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0" />
+                                </StackPanel>
+                            </ui:CardControl>
+                            <ui:CardControl Icon="{ui:SymbolIcon ArrowMinimize24}"
+                                            Margin="0,0,0,3">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="DirectX 全屏时隐藏"
+                                                   FontSize="14" />
+                                        <TextBlock Text="仅 DirectX 独占全屏时不显示浮窗"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="FullscreenBox"
+                                                 Checked="OnSettingChanged"
+                                                 Unchecked="OnSettingChanged" />
+                            </ui:CardControl>
+                            <ui:CardControl Icon="{ui:SymbolIcon ShareScreenStart24}"
+                                            Margin="0,0,0,24">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="开机自启动"
+                                                   FontSize="14" />
+                                        <TextBlock Text="登录 Windows 后自动启动 CapsLockShow"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="StartupBox"
+                                                 Checked="OnStartupChanged"
+                                                 Unchecked="OnStartupChanged" />
+                            </ui:CardControl>
+
+                            <TextBlock Text="预览"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,6" />
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="0,0,0,76">
+                                <ui:Button Content="Caps Lock 浮窗"
+                                           Icon="{ui:SymbolIcon TextCaseTitle24}"
+                                           Margin="0,0,8,0"
+                                           Click="OnTestCaps" />
+                                <ui:Button Content="Num Lock 浮窗"
+                                           Icon="{ui:SymbolIcon NumberSymbol24}"
+                                           Margin="0,0,8,0"
+                                           Click="OnTestNum" />
+                                <ui:Button Content="Scroll Lock 浮窗"
+                                           Icon="{ui:SymbolIcon ArrowBetweenDown24}"
+                                           Click="OnTestScroll" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="AppearancePage"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel MaxWidth="1000"
+                                    Margin="0,0,20,0">
+                            <TextBlock Text="外观"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,24" />
+
+                            <TextBlock Text="外观与行为"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,6" />
+                            <ui:CardControl Icon="{ui:SymbolIcon Color24}"
+                                            Margin="0,0,0,3">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="应用主题"
+                                                   FontSize="14" />
+                                        <TextBlock Text="更改设置窗口和浮窗的深浅色策略"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ComboBox x:Name="ThemeBox"
+                                          SelectedIndex="0"
+                                          SelectionChanged="OnThemeChanged">
+                                    <ComboBoxItem Content="跟随系统"
+                                                  Tag="system" />
+                                    <ComboBoxItem Content="浅色"
+                                                  Tag="light" />
+                                    <ComboBoxItem Content="深色"
+                                                  Tag="dark" />
+                                </ComboBox>
+                            </ui:CardControl>
+                            <ui:CardControl Icon="{ui:SymbolIcon Location24}"
+                                            Margin="0,0,0,76">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="浮窗位置"
+                                                   FontSize="14" />
+                                        <TextBlock Text="默认显示在鼠标所在屏幕的底部居中"
+                                                   FontSize="12"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ComboBox x:Name="PositionBox"
+                                          SelectionChanged="OnPositionChanged">
+                                    <ComboBoxItem Content="底部居中"
+                                                  Tag="bottom_center" />
+                                    <ComboBoxItem Content="左下角"
+                                                  Tag="bottom_left" />
+                                    <ComboBoxItem Content="右下角"
+                                                  Tag="bottom_right" />
+                                    <ComboBoxItem Content="顶部居中"
+                                                  Tag="top_center" />
+                                </ComboBox>
+                            </ui:CardControl>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="AboutPage"
+                                  Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel MaxWidth="1000"
+                                    Margin="0,0,20,0">
+                            <TextBlock Text="CapsLockShow"
+                                       FontSize="24"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12" />
+                            <TextBlock Text="CapsLockShow 是一个面向 Windows 11 的锁定键浮窗工具。"
+                                       FontSize="14"
+                                       Opacity="0.75"
+                                       TextWrapping="WrapWithOverflow"
+                                       Margin="4,0,0,24" />
+
+                            <ui:CardExpander Icon="{ui:SymbolIcon Info24}"
+                                             Margin="0,0,0,8">
+                                <ui:CardExpander.Header>
+                                    <TextBlock Text="开源许可"
+                                               FontSize="14" />
+                                </ui:CardExpander.Header>
+                                <TextBlock Text="项目按 GPLv3 开源。公开分发时请保留源码、许可证和第三方依赖说明。"
+                                           TextWrapping="Wrap"
+                                           Margin="8"
+                                           Opacity="0.75" />
+                                <TextBlock Text="作者：WJJ"
+                                           TextWrapping="Wrap"
+                                           Margin="8"
+                                           Opacity="0.75" />
+                            </ui:CardExpander>
+
+                            <ui:CardAction IsChevronVisible="False"
+                                           Margin="0,0,0,76">
+                                <StackPanel>
+                                    <TextBlock Text="第三方依赖"
+                                               FontWeight="SemiBold"
+                                               FontSize="14" />
+                                    <TextBlock Text="WPF-UI 4.3.0, .NET 8 Windows Desktop"
+                                               FontSize="12"
+                                               Opacity="0.6"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+                            </ui:CardAction>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </ui:NavigationView.ContentOverlay>
+        </ui:NavigationView>
+
+        <ui:TitleBar x:Name="TitleBar"
+                     Title="CapsLockShow"
+                     Grid.Row="0"
+                     CloseWindowByDoubleClickOnIcon="True">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/Resources/App.ico" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+    </Grid>
+</ui:FluentWindow>
