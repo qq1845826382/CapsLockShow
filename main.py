@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, QTimer, Qt, Signal, QObject
-from PySide6.QtGui import QAction, QColor, QCursor, QFont, QIcon, QPainter, QPainterPath, QPixmap
+from PySide6.QtGui import QAction, QColor, QCursor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -420,7 +420,14 @@ class LockFlyout(QWidget):
         painter.drawPath(path)
 
         icon_rect = QRect(20, 19, 34, 34)
-        self._draw_lock_icon(painter, icon_rect, text if self.is_on else muted)
+        self._draw_key_icon(
+            painter,
+            icon_rect,
+            self.key_name,
+            self.is_on,
+            accent,
+            muted,
+        )
 
         painter.setPen(text)
         painter.setFont(QFont("Segoe UI Variable", 12, QFont.Weight.DemiBold))
@@ -436,22 +443,46 @@ class LockFlyout(QWidget):
         painter.setBrush(accent)
         painter.drawRoundedRect(indicator, 2, 2)
 
-    def _draw_lock_icon(self, painter: QPainter, rect: QRect, color: QColor) -> None:
+    def _draw_key_icon(
+        self,
+        painter: QPainter,
+        rect: QRect,
+        key_name: str,
+        is_on: bool,
+        accent: QColor,
+        muted: QColor,
+    ) -> None:
         painter.save()
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(color)
-        body = QRect(rect.left() + 5, rect.top() + 14, 24, 17)
-        painter.drawRoundedRect(body, 5, 5)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
-        pen = painter.pen()
-        pen.setColor(color)
-        pen.setWidth(4)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        if self.is_on:
-            painter.drawArc(rect.left() + 8, rect.top() + 3, 18, 22, 0, 180 * 16)
-        else:
-            painter.drawArc(rect.left() + 11, rect.top() + 2, 18, 22, 25 * 16, 155 * 16)
+        symbols = {
+            "Caps Lock": "A",
+            "Num Lock": "1",
+            "Scroll Lock": "↕",
+        }
+        symbol = symbols.get(key_name, "?")
+        key_rect = rect.adjusted(1, 1, -1, -1)
+
+        foreground = QColor(accent if is_on else muted)
+        fill = QColor(foreground)
+        fill.setAlpha(28 if is_on else 14)
+        outline = QColor(foreground)
+        outline.setAlpha(210 if is_on else 100)
+
+        painter.setBrush(fill)
+        painter.setPen(QPen(outline, 1.4))
+        painter.drawRoundedRect(key_rect, 7, 7)
+
+        painter.setPen(foreground)
+        painter.setFont(
+            QFont(
+                "Segoe UI Variable",
+                14 if key_name == "Scroll Lock" else 15,
+                QFont.Weight.DemiBold,
+            )
+        )
+        painter.drawText(key_rect, Qt.AlignmentFlag.AlignCenter, symbol)
         painter.restore()
 
 
