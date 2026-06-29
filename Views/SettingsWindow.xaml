@@ -275,14 +275,15 @@
                                     <TextBlock Text="开源许可"
                                                FontSize="14" />
                                 </ui:CardExpander.Header>
-                                <TextBlock Text="项目按 GPLv3 开源。公开分发时请保留源码、许可证和第三方依赖说明。"
-                                           TextWrapping="Wrap"
-                                           Margin="8"
-                                           Opacity="0.75" />
-                                <TextBlock Text="作者：WJJ"
-                                           TextWrapping="Wrap"
-                                           Margin="8"
-                                           Opacity="0.75" />
+                                <StackPanel Margin="8">
+                                    <TextBlock Text="项目按 GPLv3 开源。公开分发时请保留源码、许可证和第三方依赖说明。"
+                                               TextWrapping="Wrap"
+                                               Opacity="0.75" />
+                                    <TextBlock Text="作者：WJJ"
+                                               TextWrapping="Wrap"
+                                               Margin="0,8,0,0"
+                                               Opacity="0.75" />
+                                </StackPanel>
                             </ui:CardExpander>
 
                             <ui:CardAction IsChevronVisible="False"
