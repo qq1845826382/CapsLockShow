@@ -1,30 +1,28 @@
 # CapsLockShow
 
-CapsLockShow is a small Windows 11 style flyout app for keyboard lock keys.
-It only displays `Caps Lock`, `Num Lock`, and `Scroll Lock` state changes.
+CapsLockShow 是一个面向 Windows 10/11 的锁定键浮窗工具，只显示 `Caps Lock`、`Num Lock` 和 `Scroll Lock` 的状态变化。
 
 ## Features
 
-- Win11/Fluent-style tray app and settings window.
-- Lock key flyout for Caps Lock, Num Lock, and Scroll Lock.
-- Shows the current Caps Lock state once after startup so the user knows the app is running.
-- Uses `Icon.png` for the executable, application window, taskbar, and system tray icon.
-- Global low-level keyboard hook implemented with Win32 `WH_KEYBOARD_LL`.
-- Reads the final key state after `WM_KEYUP`.
-- Hides the flyout only when `SHQueryUserNotificationState` reports DirectX exclusive fullscreen.
-- Shows on the monitor that currently contains the mouse cursor.
-- Settings are stored in `%APPDATA%\CapsLockShow\config.json`.
-- Optional current-user startup entry in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+- 托盘常驻应用，提供设置、预览、自启动和退出菜单。
+- 使用 Win32 `WH_KEYBOARD_LL` 全局低级键盘钩子，在 `WM_KEYUP` 后读取最终锁定键状态。
+- 启动后显示一次当前 Caps Lock 状态，确认应用已运行。
+- 浮窗显示在鼠标所在屏幕，支持底部居中、左下角、右下角和顶部居中。
+- 可在 DirectX 独占全屏时隐藏浮窗。
+- 设置保存到 `%APPDATA%\CapsLockShow\config.json`，兼容旧版字段。
+- 可写入当前用户自启动项：`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`。
+
+## Requirements
+
+- Windows 10/11
+- .NET 8 Desktop Runtime
 
 ## Development
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe .\main.py
+dotnet restore
+dotnet run
 ```
-
-If `python` is not in `PATH`, pass an explicit interpreter path.
 
 ## Build
 
@@ -32,10 +30,8 @@ If `python` is not in `PATH`, pass an explicit interpreter path.
 .\build.ps1
 ```
 
-The single-file executable is written to `dist\CapsLockShow.exe`.
+构建产物输出到 `dist\CapsLockShow.exe`。`dist` 不提交到仓库，发布文件通过 Release 分发。
 
 ## License
 
-This project is licensed under GPLv3. It uses `PySide6-Fluent-Widgets`, which is
-GPLv3 for non-commercial open-source use and requires a commercial license for
-commercial use.
+This project is licensed under GPLv3.
