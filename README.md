@@ -7,6 +7,8 @@ It only displays `Caps Lock`, `Num Lock`, and `Scroll Lock` state changes.
 
 - Win11/Fluent-style tray app and settings window.
 - Lock key flyout for Caps Lock, Num Lock, and Scroll Lock.
+- Shows the current Caps Lock state once after startup so the user knows the app is running.
+- Uses `Icon.png` for the executable, application window, taskbar, and system tray icon.
 - Global low-level keyboard hook implemented with Win32 `WH_KEYBOARD_LL`.
 - Reads the final key state after `WM_KEYUP`.
 - Hides the flyout only when `SHQueryUserNotificationState` reports DirectX exclusive fullscreen.
@@ -19,7 +21,7 @@ It only displays `Caps Lock`, `Num Lock`, and `Scroll Lock` state changes.
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe .\main.py
+.\.venv\Scripts\python.exe .\app.py
 ```
 
 If `python` is not in `PATH`, pass an explicit interpreter path.
