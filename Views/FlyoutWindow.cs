@@ -18,6 +18,7 @@ public sealed class FlyoutWindow : Forms.Form
     private const int ContentTop = 11;
     private const int IndicatorHeight = 4;
     private const int IndicatorBottom = 7;
+    private const int CS_DROPSHADOW = 0x00020000;
 
     private readonly Forms.Timer _hideTimer = new();
     private readonly Forms.Timer _animationTimer = new() { Interval = 15 };
@@ -36,7 +37,7 @@ public sealed class FlyoutWindow : Forms.Form
     public FlyoutWindow()
     {
         AutoScaleMode = Forms.AutoScaleMode.None;
-        BackColor = Color.Black;
+        UpdateSurfaceColor();
         ClientSize = new Size(FlyoutWidth, FlyoutHeight);
         DoubleBuffered = true;
         FormBorderStyle = Forms.FormBorderStyle.None;
@@ -60,6 +61,7 @@ public sealed class FlyoutWindow : Forms.Form
         {
             var cp = base.CreateParams;
             cp.ExStyle |= NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW;
+            cp.ClassStyle |= CS_DROPSHADOW;
             return cp;
         }
     }
@@ -67,6 +69,8 @@ public sealed class FlyoutWindow : Forms.Form
     public void ApplySettings(AppSettings settings)
     {
         _settings = settings;
+        UpdateSurfaceColor();
+        Invalidate();
     }
 
     public void ShowState(LockKey key, bool isOn)
@@ -104,11 +108,10 @@ public sealed class FlyoutWindow : Forms.Form
         graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
         var dark = ThemeService.IsDark(_settings.Theme);
-        using var surfaceBrush = new SolidBrush(dark ? Color.FromArgb(32, 32, 32) : Color.FromArgb(252, 252, 252));
-        using var borderPen = new Pen(dark ? Color.FromArgb(30, 255, 255, 255) : Color.FromArgb(24, 0, 0, 0), 1f);
-        using var surfacePath = RoundedRect(new RectangleF(0.5f, 0.5f, ClientSize.Width - 1f, ClientSize.Height - 1f), CornerRadius);
+        var surfaceColor = dark ? Color.FromArgb(32, 32, 32) : Color.FromArgb(252, 252, 252);
+        using var surfaceBrush = new SolidBrush(surfaceColor);
+        using var surfacePath = RoundedRect(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), CornerRadius);
         graphics.FillPath(surfaceBrush, surfacePath);
-        graphics.DrawPath(borderPen, surfacePath);
 
         if (_key is null)
         {
@@ -224,6 +227,13 @@ public sealed class FlyoutWindow : Forms.Form
         using var path = RoundedRect(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), CornerRadius);
         Region?.Dispose();
         Region = new Region(path);
+    }
+
+    private void UpdateSurfaceColor()
+    {
+        BackColor = ThemeService.IsDark(_settings.Theme)
+            ? Color.FromArgb(32, 32, 32)
+            : Color.FromArgb(252, 252, 252);
     }
 
     private Point TargetPosition()
