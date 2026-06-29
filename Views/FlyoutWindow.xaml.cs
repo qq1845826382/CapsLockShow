@@ -20,6 +20,7 @@ public partial class FlyoutWindow : Window
     {
         InitializeComponent();
         Opacity = 0;
+        RootBorder.SizeChanged += (_, _) => ApplyRoundedClip();
         _hideTimer.Tick += (_, _) => HideAnimated();
     }
 
@@ -119,6 +120,19 @@ public partial class FlyoutWindow : Window
         Indicator.Background = accentBrush;
         Indicator.Opacity = isOn ? 1 : 0.43;
         Indicator.Width = isOn ? 96 : 52;
+    }
+
+    private void ApplyRoundedClip()
+    {
+        var width = RootBorder.ActualWidth;
+        var height = RootBorder.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        var radius = RootBorder.CornerRadius.TopLeft;
+        RootBorder.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
     }
 
     private WpfPoint TargetPosition()

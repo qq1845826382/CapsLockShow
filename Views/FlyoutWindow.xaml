@@ -9,6 +9,7 @@
         ShowActivated="False"
         ShowInTaskbar="False"
         Topmost="True"
+        UseLayoutRounding="True"
         WindowStartupLocation="Manual"
         WindowStyle="None">
     <Border x:Name="RootBorder"
