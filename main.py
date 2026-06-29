@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, QTimer, Qt, Signal, QObject
-from PySide6.QtGui import QAction, QColor, QCursor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QAction, QColor, QCursor, QFont, QIcon, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -47,7 +47,10 @@ from qfluentwidgets import (
 
 
 APP_NAME = "CapsLockShow"
+APP_USER_MODEL_ID = "CapsLockShow.CapsLockShow"
 STARTUP_VALUE_NAME = APP_NAME
+WINDOW_WIDTH = 960
+WINDOW_HEIGHT = 680
 
 WH_KEYBOARD_LL = 13
 HC_ACTION = 0
@@ -147,6 +150,19 @@ def app_data_dir(create: bool = False) -> Path:
 
 
 CONFIG_PATH = app_data_dir() / "config.json"
+
+
+def resource_path(name: str) -> Path:
+    bundle_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return bundle_dir / name
+
+
+def application_icon() -> QIcon:
+    icon_path = resource_path("Icon.png")
+    icon = QIcon(str(icon_path))
+    if icon.isNull():
+        raise RuntimeError(f"无法加载应用图标：{icon_path}")
+    return icon
 
 
 def load_settings() -> AppSettings:
@@ -669,6 +685,9 @@ class GeneralSettingsPage(SettingsPage):
         self.startup_card.setChecked(enabled)
         self.startup_card.switchButton.blockSignals(False)
 
+    def set_startup_enabled(self, enabled: bool) -> None:
+        self._set_startup(enabled)
+
 
 class AppearanceSettingsPage(SettingsPage):
     changed = Signal()
@@ -742,9 +761,10 @@ class SettingsWindow(MSFluentWindow):
         self.items = SettingsConfigItems(settings)
         self.setWindowTitle(f"{APP_NAME} 设置")
         self.setWindowIcon(icon)
-        self.resize(860, 640)
-        self.setMinimumSize(760, 560)
+        self.setMinimumSize(820, 580)
+        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self.setMicaEffectEnabled(True)
+        self._initial_layout_refreshed = False
 
         self.general_page = GeneralSettingsPage(settings, self.items, self)
         self.appearance_page = AppearanceSettingsPage(settings, self.items, self)
@@ -766,16 +786,39 @@ class SettingsWindow(MSFluentWindow):
     def sync_startup(self, enabled: bool) -> None:
         self.general_page.sync_startup(enabled)
 
+    def set_startup_enabled(self, enabled: bool) -> None:
+        self.general_page.set_startup_enabled(enabled)
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._initial_layout_refreshed:
+            return
+        self._initial_layout_refreshed = True
+        QTimer.singleShot(0, self._refresh_initial_layout)
+
+    def _refresh_initial_layout(self) -> None:
+        width = self.width()
+        height = self.height()
+        self.resize(width + 1, height)
+        self.resize(width, height)
+
+        for page in (self.general_page, self.appearance_page, self.about_page):
+            page.expand_layout.invalidate()
+            page.expand_layout.activate()
+            page.scroll_widget.updateGeometry()
+            page.updateGeometry()
+            page.viewport().update()
+
 
 class CapsLockShowApp(QObject):
-    def __init__(self):
+    def __init__(self, icon: QIcon):
         super().__init__()
         self.settings = load_settings()
         apply_app_theme(self.settings)
         self.bridge = KeyboardBridge()
         self.bridge.key_released.connect(self.on_key_released)
         self.flyout = LockFlyout(self.settings)
-        self.icon = self._app_icon()
+        self.icon = icon
         self.settings_window = SettingsWindow(self.settings, self.icon)
         self.settings_window.changed.connect(self.refresh_tray_state)
         self.settings_window.test_requested.connect(self.test_flyout)
@@ -783,6 +826,7 @@ class CapsLockShowApp(QObject):
         self.hook = KeyboardHook(self.bridge.key_released.emit)
         self.hook.start()
         QApplication.instance().aboutToQuit.connect(self.shutdown)
+        QTimer.singleShot(650, self._show_startup_feedback)
 
     def _create_tray(self) -> QSystemTrayIcon:
         tray = QSystemTrayIcon(self.icon, self)
@@ -815,20 +859,6 @@ class CapsLockShowApp(QObject):
         tray.show()
         return tray
 
-    def _app_icon(self) -> QIcon:
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(accent_color())
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(QRect(8, 8, 48, 48), 12, 12)
-        painter.setPen(QColor("white"))
-        painter.setFont(QFont("Segoe UI Variable", 18, QFont.Weight.Bold))
-        painter.drawText(QRect(8, 8, 48, 48), Qt.AlignmentFlag.AlignCenter, "A")
-        painter.end()
-        return QIcon(pixmap)
-
     def on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self.open_settings()
@@ -839,7 +869,7 @@ class CapsLockShowApp(QObject):
         self.settings_window.activateWindow()
 
     def toggle_startup_from_tray(self, checked: bool) -> None:
-        self.settings_window._set_startup(checked)
+        self.settings_window.set_startup_enabled(checked)
         self.refresh_tray_state()
 
     def refresh_tray_state(self) -> None:
@@ -866,15 +896,31 @@ class CapsLockShowApp(QObject):
         self.hook.stop()
         self.tray.hide()
 
+    def _show_startup_feedback(self) -> None:
+        if self.settings.hide_directx_fullscreen and is_directx_fullscreen():
+            return
+        self.flyout.show_state("Caps Lock", is_key_toggled(VK_CAPITAL))
+
+
+def set_windows_app_id() -> None:
+    shell32.SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
+    shell32.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.c_long
+    shell32.SetCurrentProcessExplicitAppUserModelID(APP_USER_MODEL_ID)
+
 
 def main() -> int:
     if sys.platform != "win32":
         raise RuntimeError("CapsLockShow only supports Windows.")
 
+    set_windows_app_id()
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationName(APP_NAME)
-    controller = CapsLockShowApp()
+
+    icon = application_icon()
+    app.setWindowIcon(icon)
+
+    controller = CapsLockShowApp(icon)
     app.controller = controller
     return app.exec()
 

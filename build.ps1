@@ -35,6 +35,6 @@ Invoke-Step { & $VenvPython -m PyInstaller `
     --add-data "Icon.png:." `
     --icon "Icon.png" `
     --name CapsLockShow `
-    app.py }
+    main.py }
 
 Write-Host "Built: $Root\dist\CapsLockShow.exe"
