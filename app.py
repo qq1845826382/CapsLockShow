@@ -44,6 +44,13 @@ class SettingsWindow(core.SettingsWindow):
         super().__init__(settings, icon)
         self.setMinimumSize(820, 580)
         self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self._initial_layout_refreshed = False
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._initial_layout_refreshed:
+            return
+        self._initial_layout_refreshed = True
         QTimer.singleShot(0, self._refresh_initial_layout)
 
     def _refresh_initial_layout(self) -> None:
