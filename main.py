@@ -489,6 +489,7 @@ class SettingsConfigItems:
 class SettingsPage(ScrollArea):
     def __init__(self, title: str, route_key: str, parent=None):
         super().__init__(parent=parent)
+
         self.setObjectName(route_key)
         self.scroll_widget = QWidget()
         self.expand_layout = ExpandLayout(self.scroll_widget)
@@ -496,11 +497,14 @@ class SettingsPage(ScrollArea):
 
         self.setWidget(self.scroll_widget)
         self.setWidgetResizable(True)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.enableTransparentBackground()
+
+        self.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.setViewportMargins(0, 86, 0, 18)
         self.expand_layout.setSpacing(28)
         self.expand_layout.setContentsMargins(48, 0, 48, 0)
-        self.scroll_widget.setObjectName("scrollWidget")
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
