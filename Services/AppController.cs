@@ -61,6 +61,7 @@ public sealed class AppController : IDisposable
     public void Dispose()
     {
         _keyboardHook.Dispose();
+        _flyoutWindow.Dispose();
         _trayService.Dispose();
     }
 
